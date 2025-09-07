@@ -9,21 +9,45 @@ Repository ini berisi contoh konfigurasi dan script untuk mengimplementasikan ho
 - Mengirim log Cowrie ke Wazuh Agent, agar Wazuh Manager menganalisis dan menghasilkan alert.
 - Mengirim alert ke Telegram (bot) untuk notifikasi cepat ke SOC.
 
-## Struktur
-(Lihat README di repository)
+## Arsitektur Alur
+
+- **Attacker**: Pelaku mencoba brute force, scanning, atau exploit.  
+- **Cowrie**: Honeypot SSH/Telnet untuk merekam interaksi attacker.  
+- **Wazuh Agent**: Mengumpulkan log Cowrie dan meneruskannya ke Wazuh Manager.  
+- **Wazuh Manager**: Melakukan analisis log dengan ruleset/decoder khusus Cowrie.  
+- **Telegram Bot**: Mengirimkan notifikasi alert ke grup/akun SOC.  
+
+---
 
 ## Prasyarat
-- Docker & docker-compose (untuk menjalankan Cowrie + optional relays).
-- Wazuh Manager (bisa remote) — jika Anda belum punya Wazuh Manager, lihat dokumentasi Wazuh.
-- Akun bot Telegram (token) & chat_id untuk pengiriman pesan.
+1. **Server / VM Linux (Ubuntu/Debian/centOS)** dengan akses root.  
+2. **Cowrie Honeypot** sudah terinstal (lihat dokumentasi resmi: https://github.com/cowrie/cowrie).  
+3. **Wazuh Agent** sudah terinstal (https://documentation.wazuh.com).  
+4. **Akun Telegram Bot** dengan `BOT_TOKEN` dan `CHAT_ID`.  
 
-## Langkah cepat
-1. Edit `cowrie/cowrie.cfg` untuk menempatkan JSON log ke direktori yang dimount.
-2. Jalankan `docker-compose up -d` untuk cowrie dan optional telegram_relay.
-3. Konfigurasikan Wazuh Agent (`wazuh-agent/ossec.conf`) agar memonitor path log Cowrie dan register agent ke Wazuh Manager.
-4. Salin decoder dan rules (`wazuh-manager/decoders` dan `wazuh-manager/rules`) ke manager.
-5. Pasang skrip `integrations/telegram_notify.sh` pada Wazuh Manager `/var/ossec/active-response/bin/` dan berikan permission.
-6. Konfigurasikan ossec.conf manager agar memanggil active-response script untuk rule Cowrie.
-7. Uji: lakukan interaksi di Cowrie → lihat alert di Wazuh → cek pesan Telegram.
+---
 
-## File utama / contoh ada di repo ini. Ikuti `docs/deploy_steps.md` untuk panduan lengkap.
+## Langkah Instalasi
+
+### 1. Konfigurasi Wazuh Agent
+Edit file /var/ossec/etc/ossec.conf di agent agar memonitor log Cowrie
+```
+<localfile>
+  <log_format>json</log_format>
+  <location>/home/cowrie/cowrie-git/var/log/cowrie.json</location>
+</localfile>
+```
+```
+sudo systemctl restart wazuh-agent
+```
+### 2. Tambahkan Decoder & Rule di Wazuh Manager
+Salin file berikut dari repo ini ke Wazuh Manager:
+
+`wazuh-manager/decoders/0500-cowrie_decoders.xml → /var/ossec/etc/decoders/`
+
+`wazuh-manager/rules/0900-cowrie_rules.xml → /var/ossec/etc/rules/`
+```
+systemctl restart wazuh-manager
+```
+### 3. Inetegrasi wazuh dengan telegram
+`nano /var/ossec/integrations/custom-telegram`
