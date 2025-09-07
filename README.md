@@ -1,4 +1,4 @@
-# honeypot-cowrie-wazuh-telegram-🐝
+# Honeypot-cowrie-wazuh-telegram-🐝
 
 # Honeypot Cowrie → Wazuh → Telegram
 
