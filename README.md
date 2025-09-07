@@ -31,28 +31,21 @@ Repository ini berisi contoh konfigurasi dan script untuk mengimplementasikan ho
 
 ### 1. Konfigurasi Wazuh Agent
 Edit file /var/ossec/etc/ossec.conf di agent agar memonitor log Cowrie
+`nano /var/ossec/etc/ossec.conf`
 ```
-<localfile>
-  <log_format>json</log_format>
-  <location>/home/cowrie/cowrie-git/var/log/cowrie.json</location>
-</localfile>
+<integration>
+        <name>custom-telegram</name>
+        <level>3</level>
+        <hook_url>https://api.telegram.org/bot*YOUR API KEY*/sendMessage</hook_url>
+        <alert_format>json</alert_format>
+    </integration>
 ```
-```
-sudo systemctl restart wazuh-agent
-```
-### 2. Tambahkan Decoder & Rule di Wazuh Manager
-Salin file berikut dari repo ini ke Wazuh Manager:
+`sudo systemctl restart wazuh-agent`
 
-`wazuh-manager/decoders/0500-cowrie_decoders.xml → /var/ossec/etc/decoders/`
-
-`wazuh-manager/rules/0900-cowrie_rules.xml → /var/ossec/etc/rules/`
-```
-systemctl restart wazuh-manager
-```
-### 3. Inetegrasi wazuh dengan telegram
+### 2. Tambahkan blok di wazuh
+edit file
 `nano /var/ossec/integrations/custom-telegram`
 
----
 ```
 #!/bin/sh
 
@@ -90,5 +83,41 @@ esac
 
 ${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} "$@"
 ```
-`nano /var/ossec/integrations/script-telegram.py`
 
+### 3. masukan script python
+```
+#!/usr/bin/env python3
+import sys, json, requests
+
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+CHAT_ID = "YOUR_CHAT_ID"
+URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+
+alert_file = sys.argv[1]
+with open(alert_file) as f:
+    alert = json.load(f)
+
+message = (
+    f"🚨 *Wazuh Alert* 🚨\n"
+    f"Rule: {alert['rule']['description']}\n"
+    f"Level: {alert['rule']['level']}\n"
+    f"Agent: {alert['agent']['name']}\n"
+    f"Time: {alert['timestamp']}\n"
+    f"Src IP: {alert.get('srcip', 'N/A')}"
+)
+
+requests.post(URL, data={"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"})
+```
+
+### 4. Berika hak akses
+`chown root:ossec /var/ossec/integrations/custom-telegram*`
+
+`chmod 750 /var/ossec/integrations/custom-telegram*`
+
+### 5. Uji Coba
+
+Lakukan login ke Cowrie (ssh root@IP_HONEYPOT -p 2222).
+
+Cek apakah log masuk ke Wazuh (/var/ossec/logs/alerts/alerts.json).
+
+Pastikan Telegram menerima notifikasi.
