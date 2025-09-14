@@ -1,5 +1,3 @@
-# Honeypot-cowrie-wazuh-telegram-🐝
-
 # Honeypot Cowrie → Wazuh → Telegram
 
 Repository ini berisi contoh konfigurasi dan script untuk mengimplementasikan honeypot Cowrie yang terintegrasi dengan Wazuh (agent → manager) dan mengirimkan notifikasi ke Telegram untuk SOC.
